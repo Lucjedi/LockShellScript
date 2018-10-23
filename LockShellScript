@@ -1,3 +1,20 @@
+##     |--- LockSkylineScript <opcao> <opcional>
+##          |--- <opcao> - WAIT/EXIT/REMOVE (Obrigatorio)
+##               |--- WAIT = Aguarda a finalizacao de outro processo em execucao.
+##               |--- EXIT = Encerra a execucao do script atual (exit 0) se encontrar outro processo em andamento.
+##               |--- REMOVE = Remove o lock da execucao atual.
+##          |--- <opcional> Pode-se utilizar as opcoes <nome do lock> e <time=>.
+##               |--- <nome do lock> Caso deve conter UM lock para scripts distintos ou locks distintos para um mesmo script.
+##               |--- <time=3600> Por padrao o script utiliza 1800 (30 minutos) para o nagios e este valor podera ser alterado com a opcao "time="
+##       EXEMPLOS:
+##             |--- LockSkylineScript WAIT
+##             |--- LockSkylineScript WAIT time=3600
+##             |--- LockSkylineScript WAIT principal_python
+##                  |--- LockSkylineScript WAIT ${banco}.principal_python
+##             |--- LockSkylineScript WAIT principal_python time=3600
+##                  |--- LockSkylineScript WAIT ${banco}.principal_python time=3600
+
+
 unset __flagRM
 
 __data=$(date +"%d/%m/%y")
