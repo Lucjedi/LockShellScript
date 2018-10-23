@@ -1,0 +1,113 @@
+unset __flagRM
+
+__data=$(date +"%d/%m/%y")
+
+function __getHora(){
+   echo $(date +"%H:%M:%S")
+}
+
+function LockSkylineScript(){
+    __dirLock="/dev/shm"
+    __ProcessLock(){
+        __dateNLock=$(date "+%Y%m%d %T.%N")
+        __pidscript="$$"
+        __lockbasename="${__lockbasename//_/$}"
+        __lockfile="${__dirLock}/${__lockbasename////$}.script.lock"
+        __gravalock="${__timeNagios};${__lockbasename};${__dateNLock};${__pidscript}"
+
+        function REMOVERFULL(){
+            printf "%s-%s-PID(%s) -> LOCK:%s\n" ${__data} $(__getHora) $$ "Executando remocao do lock."
+            while true ; do
+                sed -i "\_${__gravalock}_d" "${__lockfile}"
+                sleep 1
+                if ! ( fgrep "${__gravalock}" "${__lockfile}" ) ; then
+                    break
+                fi
+            done
+        }
+
+        function __RemoverEXIT__(){
+            if [ "${__flagRMEXIT}" != "true" ] ; then
+                REMOVERFULL
+            fi
+        }
+
+        function __Remover__(){
+            REMOVERFULL
+            __flagRMEXIT="true"
+        }
+
+        trap __RemoverEXIT__ EXIT SIGTERM SIGKILL SIGINT
+
+        function Check(){
+            __checkpid=$(head -1 "${__lockfile}")
+        }
+
+        printf "%s-%s-PID(%s) -> LOCK:%s\n" ${__data} $(__getHora) $$ "Gravando Lock: ${__gravalock} > ${__lockfile}"
+        while true ; do
+            echo "${__gravalock}" >> "${__lockfile}"
+            sleep 1
+            if ( fgrep "${__gravalock}" "${__lockfile}" ) ; then
+                break
+            fi
+        done
+        Check
+
+        printf "%s-%s-PID(%s) -> LOCK:%s\n" ${__data} $(__getHora) $$ "Verificando lock de script..."
+        while [ "${__checkpid}" != "${__gravalock}" ] ; do
+            if [ "${__flagAlertLock}" != "true${__checkpid##*;}" ] ; then
+               printf "%s-%s-PID(%s) -> LOCK:%s\n" ${__data} $(__getHora) $$ "Lock em opcao ${__oplock}. Script ja em execucao no pid: ${__checkpid##*;}. ${__msgLock}"
+               __flagAlertLock="true${__checkpid##*;}"
+            fi
+            ${__exec__}
+            Check
+        done
+        printf "%s-%s-PID(%s) -> LOCK:%s\n" ${__data} $(__getHora) $$ "Nao ha lock em execucao. Prosseguindo..."
+    }
+
+function __CheckOPTS(){
+        __timeDefault="1800"
+        for __optslocks in ${*:2} ; do
+           if [ "${__optslocks%%=*}" == "time" ] ; then
+              if ( date -d@"${__optslocks##*=}" ) > /dev/null 2> /dev/null ; then
+                 printf "%s-%s-PID(%s) -> LOCK:%s\n" ${__data} $(__getHora) $$ "Opcao <time> altaredo para ${__optslocks##*=}."
+                 __timeNagios="${__optslocks##*=}"
+              else
+                 printf "%s-%s-PID(%s) -> LOCK:%s\n" ${__data} $(__getHora) $$ "Valor invalido para a opcao <time=>. Assumindo ${__timeDefault}."
+                 __timeNagios="${__timeDefault}"
+              fi
+           else
+              __lockbasename="SetLock-${__optslocks}"
+           fi
+        done
+        if [ -z "${__timeNagios}" ] ; then
+           __timeNagios="${__timeDefault}"
+        fi
+        if [ -z "${__lockbasename}" ] ; then
+           __lockbasename="AutoLock-${0}"
+        fi
+        printf "%s-%s-PID(%s) -> LOCK:%s\n" ${__data} $(__getHora) $$ "Lock em execucao ${__lockbasename}."
+}
+    if ! [ "${0:0:2}" == "./" ] ; then
+        __oplock="${1}"
+        if [ "${__oplock}" == "WAIT" ] ; then
+            __exec__="sleep 5"
+            __msgLock="Aguardando..."
+            __CheckOPTS $*
+            __ProcessLock
+        elif [ "${__oplock}" == "EXIT" ] ; then
+            __msgLock="Encerrando script."
+            __exec__="exit 0"
+            __CheckOPTS $*
+            __ProcessLock
+        elif [ "${__oplock}" == "REMOVE" ] ; then
+           __Remover__
+        else
+            printf "%s-%s-PID(%s) -> LOCK:%s\n" ${__data} $(__getHora) $$ "ERRO - Opcao ${__oplock} invalida para executar o lock."
+        fi
+
+    else
+        printf "%s-%s-PID(%s) -> LOCK:%s\n" ${__data} $(__getHora) $$ "ERRO - Lock funciona apenas para script com link completo."
+    fi
+}
+                                                                           
